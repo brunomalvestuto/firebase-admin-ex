@@ -76,7 +76,8 @@ defmodule FirebaseAdminEx.Auth do
   @doc ~S"""
   Generate a password reset code
   """
-  @spec generate_password_reset_code(ActionCodeSettings.t(), client_email :: String.t(), project_id :: String.t()) :: {:ok, String.t()} | {:error, reason :: String.t()}
+  @spec generate_password_reset_code(ActionCodeSettings.t(), client_email :: String.t(), project_id :: String.t()) :: {:ok, String.t()} | {:error, :reset_password_exceeded_limit} | {:error, reason :: String.t()}
+
   def generate_password_reset_code(action_code_settings, client_email \\ nil, project_id \\ nil) do
     with {_stage, {:ok, action_code_settings}} <- {"validate", ActionCodeSettings.validate(action_code_settings)},
          {_stage, {:ok, encoded_json}}         <- {"make_request",  do_request("accounts:sendOobCode", %{action_code_settings | requestType: "PASSWORD_RESET", returnOobLink: true }, client_email, project_id)},
@@ -89,6 +90,9 @@ defmodule FirebaseAdminEx.Auth do
       |> Map.get("oobCode")
 
       {:ok, code}
+    else
+      {"make_request", {:error, "400 - RESET_PASSWORD_EXCEED_LIMIT"}} -> {:error, :reset_password_exceeded_limit}
+      {stage, {:error, _} = error} -> {:error, "Unknown error occured at Stage '#{stage}': #{inspect error}"}
     end
   end
 
